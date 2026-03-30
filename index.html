@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>축구/풋살 전술판 & 매칭</title>
+  <meta name="description" content="전술판과 매칭을 한번에 볼 수 있는 축구/풋살 사이트" />
+    <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container top-brand">
+      <div class="brand-stack">
+        <div class="brand-3d">풋살<span class="accent">총무</span></div>
+        <div class="brand-sub">축구/풋살 전술판 & 매칭</div>
+      </div>
+      <nav>
+        <a href="#home">홈</a>
+        <a href="#tactic">전술판</a>
+        <a href="#matching">매칭</a>
+        <a href="#contact">문의</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="home">
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <span class="badge">축구/풋살 웹서비스</span>
+          <h1>전술판과 매칭을 한번에</h1>
+          <p class="lead">
+            전술판에서 유니폼을 배치하고 이름을 넣어 이미지로 저장할 수 있고,
+            매칭 탭에서 용병, 팀매칭, 팀원모집 글을 직접 작성하고 수정하고 댓글까지 남길 수 있습니다.
+          </p>
+          <div class="hero-actions">
+            <a class="btn primary" href="#tactic">전술판 보기</a>
+            <a class="btn secondary" href="#matching">매칭 보기</a>
+          </div>
+        </div>
+
+        <div class="banner-3d">
+          
+          <div class="banner-stage">
+            <div class="banner-pitch">
+              <div class="goal-line-top"></div>
+              <div class="goal-line-bottom"></div>
+
+              <div class="player-3d left">
+                <div class="player-head"></div>
+                <div class="player-body"></div>
+                <div class="player-arm arm-l"></div>
+                <div class="player-arm arm-r"></div>
+                <div class="player-leg leg-l"></div>
+                <div class="player-leg leg-r"></div>
+              </div>
+
+              <div class="player-3d right player-right">
+                <div class="player-head"></div>
+                <div class="player-body"></div>
+                <div class="player-arm arm-l"></div>
+                <div class="player-arm arm-r"></div>
+                <div class="player-leg leg-l"></div>
+                <div class="player-leg leg-r"></div>
+              </div>
+
+              <div class="pass-line"></div>
+              <div class="player-ball"></div>
+
+              <div class="banner-caption">
+                <span>축구/풋살 전술판 & 매칭</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="ad-wrap">
+      <div class="container">
+        <div class="ad-box">
+          <div class="ad-icon">🖥️📱🍽️</div>
+          <div class="ad-text">포스 · 키오스크 · <span class="ad-highlight">테이블오더</span> 전문기업 대상정보통신 010-4551-7240</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="tactic">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <h2>전술판</h2>
+            <p class="section-text">유니폼 최대 12개 배치, 이름 입력, 드래그 이동, 보드 PNG 저장 기능을 사용할 수 있습니다.</p>
+          </div>
+        </div>
+        <div class="tactic-wrap">
+          <div class="board-head">
+            <div class="controls">
+              <button class="color-btn green-btn" data-color="green">녹색</button>
+              <button class="color-btn orange-btn" data-color="orange">주황</button>
+              <button class="color-btn pink-btn" data-color="pink">핑크</button>
+              <button class="small-btn" id="addBtn">유니폼 추가</button>
+              <button class="small-btn gray" id="resetBtn">초기화</button>
+              <button class="small-btn blue" id="downloadBtn">보드 PNG 저장</button>
+            </div>
+            <div class="count" id="counter">현재 0 / 12</div>
+          </div>
+          <div class="field-wrap">
+            <div class="field" id="field">
+              <div class="penalty top"></div>
+              <div class="penalty bottom"></div>
+              <div class="goal-area top"></div>
+              <div class="goal-area bottom"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section alt" id="matching">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <h2>풋살 매칭</h2>
+            <p class="section-text">카테고리를 나눠 글쓰기, 본인글 수정, 삭제, 댓글 기능까지 사용할 수 있습니다. 로그인 탭은 유지하면서, 글쓰기는 로그인 없이 가능하고 작성자 비밀번호 4자리로 수정/삭제할 수 있도록 바꿨습니다. 관리자 상단고정/삭제/차단 기능도 함께 유지됩니다.</p>
+            <div class="auth-box" style="margin-top:14px;padding:14px 16px;border:1px solid #dbe4f0;border-radius:16px;background:#fff;">
+              <div id="authStatus" style="font-size:14px;color:#475569;line-height:1.7;">로그인 상태 확인 중...</div>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+                <button class="small-btn" id="loginBtn" type="button">Google 로그인</button>
+                <button class="small-btn gray" id="logoutBtn" type="button">로그아웃</button>
+                <button class="small-btn blue" id="refreshBtn" type="button">새로고침</button>
+              </div>
+            </div>
+            <div class="auth-box" style="margin-top:12px;padding:12px 16px;border:1px solid #dbe4f0;border-radius:16px;background:#fff;">
+              <div style="font-size:14px;color:#334155;line-height:1.8;">
+                관리자 계정 기본값: <strong>suing4561@gmail.com</strong><br>
+                추가 관리자는 코드 안 <code>ADMIN_EMAILS</code> 배열에 1~2명 더 넣으면 됩니다.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="match-shell">
+          <aside class="board-list-card">
+            <div class="match-category">
+              <button class="chip on" data-board="mercenary">용병</button>
+              <button class="chip" data-board="matching">팀매칭</button>
+              <button class="chip" data-board="recruit">팀원모집</button>
+            </div>
+            <div class="board-meta" id="boardMeta">현재 카테고리: 용병</div>
+            <div class="controls" style="margin-bottom:0;">
+              <button class="small-btn" id="writeBtn">글쓰기</button>
+            </div>
+          </aside>
+
+          <div>
+            <div class="board-list" id="postList"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="ad-wrap">
+      <div class="container">
+        <div class="ad-box">
+          <div class="ad-icon">🖥️📱🍽️</div>
+          <div class="ad-text">포스 · 키오스크 · <span class="ad-highlight">테이블오더</span> 전문기업 대상정보통신 010-4551-7240</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="contact">
+      <div class="container">
+        <div class="section-head">
+          <div><h2>문의</h2></div>
+        </div>
+        <div class="contact-box">
+          <p><strong>광고/홍보/사이트 문의 :</strong> suing4561@gmail.com</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <strong>축구/풋살 전술판 & 매칭</strong>
+        <p>전술판과 매칭을 한번에</p>
+      </div>
+      <div class="footer-links">
+        <a href="#tactic">전술판</a>
+        <a href="#matching">매칭</a>
+        <a href="#contact">문의</a>
+      </div>
+    </div>
+  </footer>
+
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal">
+      <h3 id="modalTitle">글쓰기</h3>
+      <form id="postForm">
+        <div class="form-grid">
+          <div class="field-box">
+            <label for="authorInput">작성자</label>
+            <input id="authorInput" required maxlength="20" placeholder="이름 입력" />
+          </div>
+          <div class="field-box">
+            <label for="titleInput">제목</label>
+            <input id="titleInput" required maxlength="80" placeholder="제목 입력" />
+          </div>
+          <div class="field-box">
+            <label for="regionInput">지역</label>
+            <input id="regionInput" maxlength="40" placeholder="예: 부산 남구" />
+          </div>
+          <div class="field-box">
+            <label for="timeInput">일시</label>
+            <input id="timeInput" maxlength="40" placeholder="예: 오늘 20:00" />
+          </div>
+          <div class="field-box">
+            <label for="levelInput">레벨</label>
+            <select id="levelInput">
+              <option value="">선택</option>
+              <option>초보 환영</option>
+              <option>초중급</option>
+              <option>중급</option>
+              <option>상급</option>
+            </select>
+          </div>
+          <div class="field-box">
+            <label for="feeInput">참가비/회비</label>
+            <input id="feeInput" maxlength="30" placeholder="예: 10000원" />
+          </div>
+          <div class="field-box">
+            <label for="postPasswordInput">작성 비밀번호 4자리</label>
+            <input id="postPasswordInput" maxlength="4" inputmode="numeric" placeholder="예: 1234" />
+          </div>
+          <div class="field-box full" id="urgentBox" style="display:none;">
+            <label for="urgentInput">긴급 표시</label>
+            <select id="urgentInput">
+              <option value="false">일반글</option>
+              <option value="true">긴급</option>
+            </select>
+          </div>
+          <div class="field-box full">
+            <label for="contentInput">내용</label>
+            <textarea id="contentInput" required placeholder="내용 입력"></textarea>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn secondary" id="cancelBtn">취소</button>
+          <button type="submit" class="btn primary">저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
