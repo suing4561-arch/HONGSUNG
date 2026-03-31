@@ -30,6 +30,22 @@
     const logoutBtn = document.getElementById('logoutBtn');
     const refreshBtn = document.getElementById('refreshBtn');
     const postPasswordInput = document.getElementById('postPasswordInput');
+    const WORLD_CUP_STORAGE_KEY = 'onepick_worldcup_posts_v1';
+    const worldcupList = document.getElementById('worldcupList');
+    const worldcupMeta = document.getElementById('worldcupMeta');
+    const worldcupWriteBtn = document.getElementById('worldcupWriteBtn');
+    const worldcupModalBackdrop = document.getElementById('worldcupModalBackdrop');
+    const worldcupForm = document.getElementById('worldcupForm');
+    const worldcupCancelBtn = document.getElementById('worldcupCancelBtn');
+    const worldcupTitleInput = document.getElementById('worldcupTitleInput');
+    const worldcupCreatedAtInput = document.getElementById('worldcupCreatedAtInput');
+    const worldcupDescriptionInput = document.getElementById('worldcupDescriptionInput');
+    const worldcupStartInput = document.getElementById('worldcupStartInput');
+    const worldcupEndInput = document.getElementById('worldcupEndInput');
+    const worldcupResultInput = document.getElementById('worldcupResultInput');
+    const worldcupCandidateNameInputs = Array.from(document.querySelectorAll('.candidate-name-input'));
+    const worldcupCandidateImageInputs = Array.from(document.querySelectorAll('.candidate-image-input'));
+    const worldcupCandidateVoteInputs = Array.from(document.querySelectorAll('.candidate-vote-input'));
 
     let selectedColor = 'green';
     let jerseys = [];
@@ -280,6 +296,7 @@
     let currentUser = null;
     let cachedPosts = [];
     let bannedEmailSet = new Set();
+    let worldcupPosts = loadWorldcupPosts();
 
     function boardLabel(board) {
       if (board === 'mercenary') return '용병';
@@ -319,6 +336,180 @@
       authStatus.textContent = message;
     }
 
+    function updateWorldcupAdminUI() {
+      if (!worldcupWriteBtn) return;
+      worldcupWriteBtn.style.display = isAdminEmail(currentUser?.email) ? 'inline-flex' : 'none';
+    }
+
+    function toLocalDateTimeValue(date) {
+      const copy = new Date(date);
+      copy.setMinutes(copy.getMinutes() - copy.getTimezoneOffset());
+      return copy.toISOString().slice(0, 16);
+    }
+
+    function fromDateTimeLocal(value) {
+      return value ? new Date(value).toISOString() : '';
+    }
+
+    function createDefaultWorldcupPost({ title, description, resultSummary, startAt, endAt, createdAt, candidates }) {
+      return {
+        id: crypto.randomUUID(),
+        title,
+        description,
+        createdAt,
+        startAt,
+        endAt,
+        resultSummary,
+        candidates: candidates.map(candidate => ({
+          id: crypto.randomUUID(),
+          name: candidate.name,
+          image: candidate.image || '',
+          votes: Number(candidate.votes || 0)
+        }))
+      };
+    }
+
+    function loadWorldcupPosts() {
+      try {
+        const raw = localStorage.getItem(WORLD_CUP_STORAGE_KEY);
+        if (!raw) {
+          const now = new Date();
+          const later = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 2);
+          return [
+            createDefaultWorldcupPost({
+              title: '풋살화 원픽 월드컵 4강',
+              description: '가장 마음에 드는 후보를 바로 선택해 주세요. 사진을 클릭할 때마다 투표 수가 즉시 올라갑니다.',
+              createdAt: now.toISOString(),
+              startAt: now.toISOString(),
+              endAt: later.toISOString(),
+              resultSummary: '현재 실시간 집계 중입니다. 종료 후 최다 득표 후보를 우승으로 정리할 예정입니다.',
+              candidates: [
+                { name: '스피드 킥', votes: 3 },
+                { name: '컨트롤 마스터', votes: 5 },
+                { name: '스트라이커 프로', votes: 2 },
+                { name: '클래식 터치', votes: 4 }
+              ]
+            })
+          ];
+        }
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveWorldcupPosts() {
+      localStorage.setItem(WORLD_CUP_STORAGE_KEY, JSON.stringify(worldcupPosts));
+    }
+
+    function getWorldcupStatus(post) {
+      const now = Date.now();
+      const start = new Date(post.startAt).getTime();
+      const end = new Date(post.endAt).getTime();
+      if (Number.isFinite(end) && now > end) {
+        return { key: 'closed', label: '투표 종료', clickable: false };
+      }
+      if (Number.isFinite(start) && now < start) {
+        return { key: 'pending', label: '투표 예정', clickable: false };
+      }
+      return { key: 'live', label: '투표 진행중', clickable: true };
+    }
+
+    function renderWorldcupPosts() {
+      const sorted = [...worldcupPosts].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      worldcupMeta.textContent = `전체 ${sorted.length}개 투표글 · 최신 등록순`;
+
+      if (!sorted.length) {
+        worldcupList.innerHTML = '<div class="board-empty">등록된 원픽월드컵 투표글이 없습니다. 관리자 투표 등록으로 첫 글을 추가하세요.</div>';
+        return;
+      }
+
+      worldcupList.innerHTML = sorted.map(post => {
+        const status = getWorldcupStatus(post);
+        return `
+          <article class="board-list-card worldcup-card">
+            <div class="worldcup-top">
+              <div>
+                <h3>${escapeHtml(post.title)}</h3>
+                <p class="worldcup-desc">${escapeHtml(post.description).replace(/
+/g, '<br>')}</p>
+              </div>
+              <span class="worldcup-status ${status.key}">${status.label}</span>
+            </div>
+            <div class="worldcup-info">
+              <div class="worldcup-info-item">
+                <strong>작성일</strong>
+                <span>${formatDate(post.createdAt)}</span>
+              </div>
+              <div class="worldcup-info-item">
+                <strong>투표 시작일</strong>
+                <span>${formatDate(post.startAt)}</span>
+              </div>
+              <div class="worldcup-info-item">
+                <strong>투표 종료일</strong>
+                <span>${formatDate(post.endAt)}</span>
+              </div>
+              <div class="worldcup-info-item">
+                <strong>상태</strong>
+                <span>${status.label}</span>
+              </div>
+            </div>
+            <p class="worldcup-result">${escapeHtml(post.resultSummary || '').replace(/
+/g, '<br>')}</p>
+            <div class="worldcup-grid">
+              ${post.candidates.map((candidate, index) => `
+                <button
+                  type="button"
+                  class="candidate-card"
+                  onclick="voteWorldcup('${post.id}', '${candidate.id}')"
+                  ${status.clickable ? '' : 'disabled'}
+                  aria-label="${escapeHtml(candidate.name)} 투표"
+                >
+                  <div class="candidate-media">
+                    <span class="vote-badge">투표수 ${Number(candidate.votes || 0)}</span>
+                    ${candidate.image
+                      ? `<img src="${candidate.image}" alt="${escapeHtml(candidate.name)} 사진">`
+                      : `<div class="candidate-placeholder">후보 ${index + 1}</div>`}
+                  </div>
+                  <div class="candidate-body">
+                    <span class="candidate-name">${escapeHtml(candidate.name)}</span>
+                    <div class="candidate-caption">${status.clickable ? '사진 클릭 시 즉시 1표 증가' : '현재 클릭이 비활성화된 후보입니다.'}</div>
+                  </div>
+                </button>
+              `).join('')}
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    function openWorldcupModal() {
+      worldcupModalBackdrop.classList.add('show');
+    }
+
+    function closeWorldcupModal() {
+      worldcupModalBackdrop.classList.remove('show');
+      worldcupForm.reset();
+    }
+
+    async function fileToDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('이미지 변환 실패'));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function resetWorldcupFormDefaults() {
+      const now = new Date();
+      const nextWeek = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 7);
+      worldcupCreatedAtInput.value = toLocalDateTimeValue(now);
+      worldcupStartInput.value = toLocalDateTimeValue(now);
+      worldcupEndInput.value = toLocalDateTimeValue(nextWeek);
+    }
+
     function getSupabaseStorageKeys() {
       const projectRef = new URL(CONFIG.supabaseUrl).hostname.split('.')[0];
       const keys = new Set([
@@ -356,12 +547,14 @@
       await refreshBannedList();
       if (!currentUser) {
         setStatus('로그인 전입니다. Google 로그인을 눌러주세요.');
+        updateWorldcupAdminUI();
         return;
       }
       const email = currentUser.email || currentUser.id;
       const adminTag = isAdminEmail(currentUser.email) ? ' / 관리자' : '';
       const bannedTag = isCurrentUserBanned() ? ' / 차단됨' : '';
       setStatus(`로그인됨: ${email}${adminTag}${bannedTag}`);
+      updateWorldcupAdminUI();
     }
 
     async function loginWithGoogle() {
@@ -644,6 +837,87 @@
       await loadPosts();
     }
 
+    worldcupWriteBtn.addEventListener('click', () => {
+      if (!isAdminEmail(currentUser?.email)) {
+        alert('원픽월드컵 등록은 관리자만 가능합니다.');
+        return;
+      }
+      worldcupForm.reset();
+      resetWorldcupFormDefaults();
+      openWorldcupModal();
+    });
+
+    worldcupCancelBtn.addEventListener('click', closeWorldcupModal);
+    worldcupModalBackdrop.addEventListener('click', (e) => {
+      if (e.target === worldcupModalBackdrop) closeWorldcupModal();
+    });
+
+    worldcupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      if (!isAdminEmail(currentUser?.email)) {
+        alert('원픽월드컵 등록은 관리자만 가능합니다.');
+        return;
+      }
+
+      const createdAt = fromDateTimeLocal(worldcupCreatedAtInput.value);
+      const startAt = fromDateTimeLocal(worldcupStartInput.value);
+      const endAt = fromDateTimeLocal(worldcupEndInput.value);
+      if (!createdAt || !startAt || !endAt) {
+        alert('작성일, 시작일, 종료일을 모두 입력해 주세요.');
+        return;
+      }
+      if (new Date(startAt) > new Date(endAt)) {
+        alert('투표 시작일은 종료일보다 늦을 수 없습니다.');
+        return;
+      }
+
+      const candidates = await Promise.all(worldcupCandidateNameInputs.map(async (input, index) => {
+        const imageFile = worldcupCandidateImageInputs[index].files[0];
+        const voteValue = Number(worldcupCandidateVoteInputs[index].value || 0);
+        return {
+          name: input.value.trim(),
+          image: imageFile ? await fileToDataUrl(imageFile) : '',
+          votes: Number.isFinite(voteValue) && voteValue >= 0 ? Math.floor(voteValue) : 0
+        };
+      }));
+
+      if (!worldcupTitleInput.value.trim() || !worldcupDescriptionInput.value.trim() || !worldcupResultInput.value.trim()) {
+        alert('제목, 설명, 결과 요약 텍스트를 모두 입력해 주세요.');
+        return;
+      }
+
+      if (candidates.length !== 4 || candidates.some(candidate => !candidate.name)) {
+        alert('후보 4개의 이름을 모두 입력해 주세요.');
+        return;
+      }
+
+      worldcupPosts.push(createDefaultWorldcupPost({
+        title: worldcupTitleInput.value.trim(),
+        description: worldcupDescriptionInput.value.trim(),
+        createdAt,
+        startAt,
+        endAt,
+        resultSummary: worldcupResultInput.value.trim(),
+        candidates
+      }));
+      saveWorldcupPosts();
+      renderWorldcupPosts();
+      closeWorldcupModal();
+    });
+
+    window.voteWorldcup = function(postId, candidateId) {
+      const post = worldcupPosts.find(item => item.id === postId);
+      if (!post) return;
+      const status = getWorldcupStatus(post);
+      if (!status.clickable) return;
+      const candidate = post.candidates.find(item => item.id === candidateId);
+      if (!candidate) return;
+      candidate.votes = Number(candidate.votes || 0) + 1;
+      saveWorldcupPosts();
+      renderWorldcupPosts();
+    }
+
     loginBtn.addEventListener('click', loginWithGoogle);
     logoutBtn.addEventListener('click', logout);
     refreshBtn.addEventListener('click', () => {
@@ -659,3 +933,6 @@
 
     await loadAuthState();
     await loadPosts();
+    resetWorldcupFormDefaults();
+    renderWorldcupPosts();
+    updateWorldcupAdminUI();

@@ -18,6 +18,7 @@
         <a href="#home">홈</a>
         <a href="#tactic">전술판</a>
         <a href="#matching">매칭</a>
+        <a href="#onepick">원픽월드컵</a>
         <a href="#contact">문의</a>
       </nav>
     </div>
@@ -169,6 +170,25 @@
       </div>
     </section>
 
+    <section class="section" id="onepick">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <h2>원픽월드컵</h2>
+            <p class="section-text">관리자가 등록하는 4강 사진투표형 월드컵 게시판입니다. 최신 글이 맨 위에 오며, 투표 수는 사진 상단 배지로 즉시 반영됩니다.</p>
+          </div>
+        </div>
+
+        <div class="worldcup-shell">
+          <div class="board-list-card worldcup-toolbar">
+            <div class="worldcup-meta" id="worldcupMeta">관리자 등록 전용 4강 사진투표 게시판</div>
+            <button class="small-btn blue" id="worldcupWriteBtn" type="button">관리자 투표 등록</button>
+          </div>
+          <div class="worldcup-list" id="worldcupList"></div>
+        </div>
+      </div>
+    </section>
+
     <section class="section" id="contact">
       <div class="container">
         <div class="section-head">
@@ -190,6 +210,7 @@
       <div class="footer-links">
         <a href="#tactic">전술판</a>
         <a href="#matching">매칭</a>
+        <a href="#onepick">원픽월드컵</a>
         <a href="#contact">문의</a>
       </div>
     </div>
@@ -249,6 +270,76 @@
         <div class="modal-actions">
           <button type="button" class="btn secondary" id="cancelBtn">취소</button>
           <button type="submit" class="btn primary">저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="worldcupModalBackdrop">
+    <div class="modal">
+      <h3>원픽월드컵 관리자 등록</h3>
+      <form id="worldcupForm">
+        <div class="form-grid">
+          <div class="field-box">
+            <label for="worldcupTitleInput">제목</label>
+            <input id="worldcupTitleInput" required maxlength="80" placeholder="예: 2026 유니폼 원픽 월드컵" />
+          </div>
+          <div class="field-box">
+            <label for="worldcupCreatedAtInput">작성일</label>
+            <input id="worldcupCreatedAtInput" type="datetime-local" required />
+          </div>
+          <div class="field-box full">
+            <label for="worldcupDescriptionInput">설명</label>
+            <textarea id="worldcupDescriptionInput" required placeholder="게시글 설명 입력"></textarea>
+          </div>
+          <div class="field-box">
+            <label for="worldcupStartInput">투표 시작일</label>
+            <input id="worldcupStartInput" type="datetime-local" required />
+          </div>
+          <div class="field-box">
+            <label for="worldcupEndInput">투표 종료일</label>
+            <input id="worldcupEndInput" type="datetime-local" required />
+          </div>
+          <div class="field-box full">
+            <label for="worldcupResultInput">결과 요약 텍스트</label>
+            <textarea id="worldcupResultInput" required placeholder="종료 후 보여줄 결과 요약 또는 진행 중 안내 문구 입력"></textarea>
+          </div>
+          <div class="field-box full">
+            <label>후보 4개</label>
+            <div class="candidate-form-grid">
+              <fieldset class="candidate-fieldset">
+                <legend>후보 1</legend>
+                <input class="candidate-name-input" required maxlength="30" placeholder="이름 입력" />
+                <input class="candidate-image-input" type="file" accept="image/*" />
+                <input class="candidate-vote-input" type="number" min="0" step="1" placeholder="현재 투표 수" />
+                <div class="field-note">사진은 선택 사항이며, 비워두면 기본 플레이스홀더가 표시됩니다.</div>
+              </fieldset>
+              <fieldset class="candidate-fieldset">
+                <legend>후보 2</legend>
+                <input class="candidate-name-input" required maxlength="30" placeholder="이름 입력" />
+                <input class="candidate-image-input" type="file" accept="image/*" />
+                <input class="candidate-vote-input" type="number" min="0" step="1" placeholder="현재 투표 수" />
+                <div class="field-note">사진은 선택 사항이며, 비워두면 기본 플레이스홀더가 표시됩니다.</div>
+              </fieldset>
+              <fieldset class="candidate-fieldset">
+                <legend>후보 3</legend>
+                <input class="candidate-name-input" required maxlength="30" placeholder="이름 입력" />
+                <input class="candidate-image-input" type="file" accept="image/*" />
+                <input class="candidate-vote-input" type="number" min="0" step="1" placeholder="현재 투표 수" />
+                <div class="field-note">사진은 선택 사항이며, 비워두면 기본 플레이스홀더가 표시됩니다.</div>
+              </fieldset>
+              <fieldset class="candidate-fieldset">
+                <legend>후보 4</legend>
+                <input class="candidate-name-input" required maxlength="30" placeholder="이름 입력" />
+                <input class="candidate-image-input" type="file" accept="image/*" />
+                <input class="candidate-vote-input" type="number" min="0" step="1" placeholder="현재 투표 수" />
+                <div class="field-note">사진은 선택 사항이며, 비워두면 기본 플레이스홀더가 표시됩니다.</div>
+              </fieldset>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn secondary" id="worldcupCancelBtn">취소</button>
+          <button type="submit" class="btn primary">투표 등록</button>
         </div>
       </form>
     </div>
