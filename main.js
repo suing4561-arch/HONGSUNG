@@ -432,8 +432,7 @@
             <div class="worldcup-top">
               <div>
                 <h3>${escapeHtml(post.title)}</h3>
-                <p class="worldcup-desc">${escapeHtml(post.description).replace(/
-/g, '<br>')}</p>
+                <p class="worldcup-desc">${escapeHtml(post.description).replace(/\n/g, '<br>')}</p>
               </div>
               <span class="worldcup-status ${status.key}">${status.label}</span>
             </div>
@@ -455,8 +454,7 @@
                 <span>${status.label}</span>
               </div>
             </div>
-            <p class="worldcup-result">${escapeHtml(post.resultSummary || '').replace(/
-/g, '<br>')}</p>
+            <p class="worldcup-result">${escapeHtml(post.resultSummary || '').replace(/\n/g, '<br>')}</p>
             <div class="worldcup-grid">
               ${post.candidates.map((candidate, index) => `
                 <button
