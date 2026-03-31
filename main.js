@@ -32,7 +32,7 @@
     const postPasswordInput = document.getElementById('postPasswordInput');
     const WORLD_CUP_STORAGE_KEY = 'onepick_worldcup_posts_v1';
     const worldcupList = document.getElementById('worldcupList');
-    const worldcupMeta = document.getElementById('worldcupMeta');
+    const worldcupToolbar = document.getElementById('worldcupToolbar');
     const worldcupWriteBtn = document.getElementById('worldcupWriteBtn');
     const worldcupModalBackdrop = document.getElementById('worldcupModalBackdrop');
     const worldcupForm = document.getElementById('worldcupForm');
@@ -337,8 +337,9 @@
     }
 
     function updateWorldcupAdminUI() {
-      if (!worldcupWriteBtn) return;
-      worldcupWriteBtn.style.display = isAdminEmail(currentUser?.email) ? 'inline-flex' : 'none';
+      const isAdmin = isAdminEmail(currentUser?.email);
+      if (worldcupToolbar) worldcupToolbar.style.display = isAdmin ? 'flex' : 'none';
+      if (worldcupWriteBtn) worldcupWriteBtn.style.display = isAdmin ? 'inline-flex' : 'none';
     }
 
     function toLocalDateTimeValue(date) {
@@ -418,8 +419,6 @@
 
     function renderWorldcupPosts() {
       const sorted = [...worldcupPosts].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      worldcupMeta.textContent = `전체 ${sorted.length}개 투표글 · 최신 등록순`;
-
       if (!sorted.length) {
         worldcupList.innerHTML = '<div class="board-empty">등록된 원픽월드컵 투표글이 없습니다. 관리자 투표 등록으로 첫 글을 추가하세요.</div>';
         return;
@@ -562,27 +561,28 @@
     }
 
     async function logout() {
+      logoutBtn.disabled = true;
+      refreshBtn.disabled = true;
+      setStatus('로그아웃 처리 중...');
+
       try {
-        logoutBtn.disabled = true;
-        refreshBtn.disabled = true;
-        setStatus('로그아웃 처리 중...');
-        const { error } = await supabase.auth.signOut({ scope: 'global' });
-        if (error) throw error;
-      } catch (e) {
-        console.error(e);
+        const { error } = await supabase.auth.signOut();
+        if (error) console.error(error);
+      } catch (error) {
+        console.error(error);
+      } finally {
         clearSupabaseAuthStorage();
         currentUser = null;
-        await loadAuthState();
-        await loadPosts();
-        alert(`로그아웃 중 오류가 발생했습니다: ${e.message || '알 수 없는 오류'}`);
-        return;
-      } finally {
+        try {
+          updateWorldcupAdminUI();
+          renderWorldcupPosts();
+        } catch (error) {
+          console.error('logout refresh failed', error);
+        }
         logoutBtn.disabled = false;
         refreshBtn.disabled = false;
+        forceBrowserRefresh();
       }
-      clearSupabaseAuthStorage();
-      currentUser = null;
-      forceBrowserRefresh();
     }
 
     async function canWriteWithoutLogin() {
@@ -929,6 +929,8 @@
     supabase.auth.onAuthStateChange(async () => {
       await loadAuthState();
       await loadPosts();
+      renderWorldcupPosts();
+      updateWorldcupAdminUI();
     });
 
     async function initializeApp() {
