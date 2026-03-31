@@ -837,74 +837,76 @@
       await loadPosts();
     }
 
-    worldcupWriteBtn.addEventListener('click', () => {
-      if (!isAdminEmail(currentUser?.email)) {
-        alert('원픽월드컵 등록은 관리자만 가능합니다.');
-        return;
-      }
-      worldcupForm.reset();
-      resetWorldcupFormDefaults();
-      openWorldcupModal();
-    });
+    if (worldcupWriteBtn && worldcupForm && worldcupCancelBtn && worldcupModalBackdrop) {
+      worldcupWriteBtn.addEventListener('click', () => {
+        if (!isAdminEmail(currentUser?.email)) {
+          alert('원픽월드컵 등록은 관리자만 가능합니다.');
+          return;
+        }
+        worldcupForm.reset();
+        resetWorldcupFormDefaults();
+        openWorldcupModal();
+      });
 
-    worldcupCancelBtn.addEventListener('click', closeWorldcupModal);
-    worldcupModalBackdrop.addEventListener('click', (e) => {
-      if (e.target === worldcupModalBackdrop) closeWorldcupModal();
-    });
+      worldcupCancelBtn.addEventListener('click', closeWorldcupModal);
+      worldcupModalBackdrop.addEventListener('click', (e) => {
+        if (e.target === worldcupModalBackdrop) closeWorldcupModal();
+      });
 
-    worldcupForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
+      worldcupForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
 
-      if (!isAdminEmail(currentUser?.email)) {
-        alert('원픽월드컵 등록은 관리자만 가능합니다.');
-        return;
-      }
+        if (!isAdminEmail(currentUser?.email)) {
+          alert('원픽월드컵 등록은 관리자만 가능합니다.');
+          return;
+        }
 
-      const createdAt = fromDateTimeLocal(worldcupCreatedAtInput.value);
-      const startAt = fromDateTimeLocal(worldcupStartInput.value);
-      const endAt = fromDateTimeLocal(worldcupEndInput.value);
-      if (!createdAt || !startAt || !endAt) {
-        alert('작성일, 시작일, 종료일을 모두 입력해 주세요.');
-        return;
-      }
-      if (new Date(startAt) > new Date(endAt)) {
-        alert('투표 시작일은 종료일보다 늦을 수 없습니다.');
-        return;
-      }
+        const createdAt = fromDateTimeLocal(worldcupCreatedAtInput.value);
+        const startAt = fromDateTimeLocal(worldcupStartInput.value);
+        const endAt = fromDateTimeLocal(worldcupEndInput.value);
+        if (!createdAt || !startAt || !endAt) {
+          alert('작성일, 시작일, 종료일을 모두 입력해 주세요.');
+          return;
+        }
+        if (new Date(startAt) > new Date(endAt)) {
+          alert('투표 시작일은 종료일보다 늦을 수 없습니다.');
+          return;
+        }
 
-      const candidates = await Promise.all(worldcupCandidateNameInputs.map(async (input, index) => {
-        const imageFile = worldcupCandidateImageInputs[index].files[0];
-        const voteValue = Number(worldcupCandidateVoteInputs[index].value || 0);
-        return {
-          name: input.value.trim(),
-          image: imageFile ? await fileToDataUrl(imageFile) : '',
-          votes: Number.isFinite(voteValue) && voteValue >= 0 ? Math.floor(voteValue) : 0
-        };
-      }));
+        const candidates = await Promise.all(worldcupCandidateNameInputs.map(async (input, index) => {
+          const imageFile = worldcupCandidateImageInputs[index]?.files?.[0];
+          const voteValue = Number(worldcupCandidateVoteInputs[index]?.value || 0);
+          return {
+            name: input.value.trim(),
+            image: imageFile ? await fileToDataUrl(imageFile) : '',
+            votes: Number.isFinite(voteValue) && voteValue >= 0 ? Math.floor(voteValue) : 0
+          };
+        }));
 
-      if (!worldcupTitleInput.value.trim() || !worldcupDescriptionInput.value.trim() || !worldcupResultInput.value.trim()) {
-        alert('제목, 설명, 결과 요약 텍스트를 모두 입력해 주세요.');
-        return;
-      }
+        if (!worldcupTitleInput.value.trim() || !worldcupDescriptionInput.value.trim() || !worldcupResultInput.value.trim()) {
+          alert('제목, 설명, 결과 요약 텍스트를 모두 입력해 주세요.');
+          return;
+        }
 
-      if (candidates.length !== 4 || candidates.some(candidate => !candidate.name)) {
-        alert('후보 4개의 이름을 모두 입력해 주세요.');
-        return;
-      }
+        if (candidates.length !== 4 || candidates.some(candidate => !candidate.name)) {
+          alert('후보 4개의 이름을 모두 입력해 주세요.');
+          return;
+        }
 
-      worldcupPosts.push(createDefaultWorldcupPost({
-        title: worldcupTitleInput.value.trim(),
-        description: worldcupDescriptionInput.value.trim(),
-        createdAt,
-        startAt,
-        endAt,
-        resultSummary: worldcupResultInput.value.trim(),
-        candidates
-      }));
-      saveWorldcupPosts();
-      renderWorldcupPosts();
-      closeWorldcupModal();
-    });
+        worldcupPosts.push(createDefaultWorldcupPost({
+          title: worldcupTitleInput.value.trim(),
+          description: worldcupDescriptionInput.value.trim(),
+          createdAt,
+          startAt,
+          endAt,
+          resultSummary: worldcupResultInput.value.trim(),
+          candidates
+        }));
+        saveWorldcupPosts();
+        renderWorldcupPosts();
+        closeWorldcupModal();
+      });
+    }
 
     window.voteWorldcup = function(postId, candidateId) {
       const post = worldcupPosts.find(item => item.id === postId);
@@ -931,8 +933,28 @@
       await loadPosts();
     });
 
-    await loadAuthState();
-    await loadPosts();
-    resetWorldcupFormDefaults();
-    renderWorldcupPosts();
-    updateWorldcupAdminUI();
+    async function initializeApp() {
+      try {
+        await loadAuthState();
+      } catch (error) {
+        console.error('loadAuthState failed', error);
+        setStatus('로그인 상태를 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.');
+      }
+
+      try {
+        await loadPosts();
+      } catch (error) {
+        console.error('loadPosts failed', error);
+        postList.innerHTML = '<div class="board-empty">게시글을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div>';
+      }
+
+      try {
+        resetWorldcupFormDefaults();
+        renderWorldcupPosts();
+        updateWorldcupAdminUI();
+      } catch (error) {
+        console.error('worldcup init failed', error);
+      }
+    }
+
+    initializeApp();
