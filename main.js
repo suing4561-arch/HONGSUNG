@@ -931,6 +931,10 @@
       renderWorldcupPosts();
     }
 
+    window.handleLoginClick = loginWithGoogle;
+    window.handleLogoutClick = logout;
+    window.handleRefreshClick = forceBrowserRefresh;
+
     loginBtn.addEventListener('click', loginWithGoogle);
     logoutBtn.addEventListener('click', logout);
     refreshBtn.addEventListener('click', () => {
@@ -960,6 +964,14 @@
 
     async function initializeApp() {
       try {
+        resetWorldcupFormDefaults();
+        renderWorldcupPosts();
+        updateWorldcupAdminUI();
+      } catch (error) {
+        console.error('worldcup init failed', error);
+      }
+
+      try {
         await loadAuthState();
       } catch (error) {
         console.error('loadAuthState failed', error);
@@ -971,14 +983,6 @@
       } catch (error) {
         console.error('loadPosts failed', error);
         postList.innerHTML = '<div class="board-empty">게시글을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div>';
-      }
-
-      try {
-        resetWorldcupFormDefaults();
-        renderWorldcupPosts();
-        updateWorldcupAdminUI();
-      } catch (error) {
-        console.error('worldcup init failed', error);
       }
     }
 
