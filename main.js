@@ -535,7 +535,7 @@
     }
 
     function forceBrowserRefresh() {
-      window.location.replace(window.location.pathname + window.location.search);
+      window.location.reload();
     }
 
     async function loadAuthState() {
@@ -570,19 +570,32 @@
         if (error) console.error(error);
       } catch (error) {
         console.error(error);
-      } finally {
-        clearSupabaseAuthStorage();
-        currentUser = null;
-        try {
-          updateWorldcupAdminUI();
-          renderWorldcupPosts();
-        } catch (error) {
-          console.error('logout refresh failed', error);
-        }
-        logoutBtn.disabled = false;
-        refreshBtn.disabled = false;
-        forceBrowserRefresh();
       }
+
+      clearSupabaseAuthStorage();
+      currentUser = null;
+
+      try {
+        await loadAuthState();
+      } catch (error) {
+        console.error('logout auth refresh failed', error);
+      }
+
+      try {
+        await loadPosts();
+      } catch (error) {
+        console.error('logout post refresh failed', error);
+      }
+
+      try {
+        renderWorldcupPosts();
+        updateWorldcupAdminUI();
+      } catch (error) {
+        console.error('logout worldcup refresh failed', error);
+      }
+
+      logoutBtn.disabled = false;
+      refreshBtn.disabled = false;
     }
 
     async function canWriteWithoutLogin() {
@@ -921,16 +934,28 @@
     loginBtn.addEventListener('click', loginWithGoogle);
     logoutBtn.addEventListener('click', logout);
     refreshBtn.addEventListener('click', () => {
-      refreshBtn.disabled = true;
-      setStatus('페이지를 새로고침하는 중...');
       forceBrowserRefresh();
     });
 
     supabase.auth.onAuthStateChange(async () => {
-      await loadAuthState();
-      await loadPosts();
-      renderWorldcupPosts();
-      updateWorldcupAdminUI();
+      try {
+        await loadAuthState();
+      } catch (error) {
+        console.error('auth state refresh failed', error);
+      }
+
+      try {
+        await loadPosts();
+      } catch (error) {
+        console.error('post reload after auth failed', error);
+      }
+
+      try {
+        renderWorldcupPosts();
+        updateWorldcupAdminUI();
+      } catch (error) {
+        console.error('worldcup refresh after auth failed', error);
+      }
     });
 
     async function initializeApp() {
