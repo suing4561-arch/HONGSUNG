@@ -538,6 +538,12 @@
       window.location.reload();
     }
 
+    function applyLoggedOutView() {
+      currentUser = null;
+      setStatus('로그인 전입니다. Google 로그인을 눌러주세요.');
+      updateWorldcupAdminUI();
+    }
+
     async function loadAuthState() {
       const { data } = await supabase.auth.getSession();
       currentUser = data.session?.user ?? null;
@@ -555,9 +561,24 @@
     }
 
     async function loginWithGoogle() {
+      loginBtn.disabled = true;
+      setStatus('Google 로그인 페이지로 이동 중...');
       const redirectTo = window.location.href.split('#')[0];
-      const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo }});
-      if (error) alert(error.message);
+
+      try {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo, skipBrowserRedirect: true }
+        });
+        if (error) throw error;
+        if (!data?.url) throw new Error('로그인 URL을 불러오지 못했습니다.');
+        window.location.assign(data.url);
+      } catch (error) {
+        console.error(error);
+        loginBtn.disabled = false;
+        applyLoggedOutView();
+        alert(error.message || 'Google 로그인을 시작하지 못했습니다.');
+      }
     }
 
     async function logout() {
@@ -565,20 +586,14 @@
       refreshBtn.disabled = true;
       setStatus('로그아웃 처리 중...');
 
+      clearSupabaseAuthStorage();
+      applyLoggedOutView();
+
       try {
-        const { error } = await supabase.auth.signOut();
+        const { error } = await supabase.auth.signOut({ scope: 'local' });
         if (error) console.error(error);
       } catch (error) {
         console.error(error);
-      }
-
-      clearSupabaseAuthStorage();
-      currentUser = null;
-
-      try {
-        await loadAuthState();
-      } catch (error) {
-        console.error('logout auth refresh failed', error);
       }
 
       try {
@@ -975,7 +990,9 @@
         await loadAuthState();
       } catch (error) {
         console.error('loadAuthState failed', error);
-        setStatus('로그인 상태를 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.');
+        applyLoggedOutView();
+      } finally {
+        loginBtn.disabled = false;
       }
 
       try {
