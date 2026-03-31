@@ -127,9 +127,9 @@
             <div class="auth-box" style="margin-top:14px;padding:14px 16px;border:1px solid #dbe4f0;border-radius:16px;background:#fff;">
               <div id="authStatus" style="font-size:14px;color:#475569;line-height:1.7;">로그인 상태 확인 중...</div>
               <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
-                <button class="small-btn" id="loginBtn" type="button" onclick="window.handleLoginClick && window.handleLoginClick()">Google 로그인</button>
-                <button class="small-btn gray" id="logoutBtn" type="button" onclick="window.handleLogoutClick ? window.handleLogoutClick() : (localStorage.clear(), sessionStorage.clear(), window.location.reload())">로그아웃</button>
-                <button class="small-btn blue" id="refreshBtn" type="button" onclick="window.handleRefreshClick ? window.handleRefreshClick() : window.location.reload()">새로고침</button>
+                <button class="small-btn" id="loginBtn" type="button" onclick="window.handleLoginClick ? window.handleLoginClick() : (window.fallbackGoogleLogin && window.fallbackGoogleLogin())">Google 로그인</button>
+                <button class="small-btn gray" id="logoutBtn" type="button" onclick="window.handleLogoutClick ? window.handleLogoutClick() : (window.fallbackLogout && window.fallbackLogout())">로그아웃</button>
+                <button class="small-btn blue" id="refreshBtn" type="button" onclick="window.handleRefreshClick ? window.handleRefreshClick() : (window.fallbackRefresh && window.fallbackRefresh())">새로고침</button>
               </div>
             </div>
           </div>
@@ -337,6 +337,173 @@
       </form>
     </div>
   </div>
+  <script>
+    (function () {
+      const SUPABASE_URL = 'https://afjtafxeugtsrbedkuqj.supabase.co';
+      const WORLD_CUP_STORAGE_KEY = 'onepick_worldcup_posts_v1';
+
+      function escapeHtml(str) {
+        return String(str ?? '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#39;');
+      }
+
+      function formatDate(iso) {
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return '-';
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      }
+
+      function createDefaultWorldcupPost() {
+        const now = new Date();
+        const later = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 2);
+        return [{
+          id: 'fallback-worldcup-post',
+          title: '풋살화 원픽 월드컵 4강',
+          description: '가장 마음에 드는 후보를 바로 선택해 주세요. 사진을 클릭할 때마다 투표 수가 즉시 올라갑니다.',
+          createdAt: now.toISOString(),
+          startAt: now.toISOString(),
+          endAt: later.toISOString(),
+          resultSummary: '현재 실시간 집계 중입니다. 종료 후 최다 득표 후보를 우승으로 정리할 예정입니다.',
+          candidates: [
+            { id: 'fallback-c1', name: '스피드 킥', image: '', votes: 3 },
+            { id: 'fallback-c2', name: '컨트롤 마스터', image: '', votes: 5 },
+            { id: 'fallback-c3', name: '스트라이커 프로', image: '', votes: 2 },
+            { id: 'fallback-c4', name: '클래식 터치', image: '', votes: 4 }
+          ]
+        }];
+      }
+
+      function loadWorldcupPosts() {
+        try {
+          const raw = localStorage.getItem(WORLD_CUP_STORAGE_KEY);
+          if (!raw) return createDefaultWorldcupPost();
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) && parsed.length ? parsed : createDefaultWorldcupPost();
+        } catch (error) {
+          return createDefaultWorldcupPost();
+        }
+      }
+
+      function saveWorldcupPosts(posts) {
+        localStorage.setItem(WORLD_CUP_STORAGE_KEY, JSON.stringify(posts));
+      }
+
+      function getWorldcupStatus(post) {
+        const now = Date.now();
+        const start = new Date(post.startAt).getTime();
+        const end = new Date(post.endAt).getTime();
+        if (Number.isFinite(end) && now > end) return { key: 'closed', label: '투표 종료', clickable: false };
+        if (Number.isFinite(start) && now < start) return { key: 'pending', label: '투표 예정', clickable: false };
+        return { key: 'live', label: '투표 진행중', clickable: true };
+      }
+
+      function renderFallbackWorldcup(force) {
+        const list = document.getElementById('worldcupList');
+        if (!list) return;
+        if (!force && list.querySelector('.worldcup-card')) return;
+        const posts = loadWorldcupPosts().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        list.innerHTML = posts.map((post) => {
+          const status = getWorldcupStatus(post);
+          return `
+            <article class="board-list-card worldcup-card">
+              <div class="worldcup-top">
+                <div>
+                  <h3>${escapeHtml(post.title)}</h3>
+                  <p class="worldcup-desc">${escapeHtml(post.description).replaceAll('\n', '<br>')}</p>
+                </div>
+                <span class="worldcup-status ${status.key}">${status.label}</span>
+              </div>
+              <div class="worldcup-info">
+                <div class="worldcup-info-item"><strong>작성일</strong><span>${formatDate(post.createdAt)}</span></div>
+                <div class="worldcup-info-item"><strong>투표 시작일</strong><span>${formatDate(post.startAt)}</span></div>
+                <div class="worldcup-info-item"><strong>투표 종료일</strong><span>${formatDate(post.endAt)}</span></div>
+                <div class="worldcup-info-item"><strong>상태</strong><span>${status.label}</span></div>
+              </div>
+              <p class="worldcup-result">${escapeHtml(post.resultSummary || '').replaceAll('\n', '<br>')}</p>
+              <div class="worldcup-grid">
+                ${post.candidates.map((candidate, index) => `
+                  <button
+                    type="button"
+                    class="candidate-card"
+                    onclick="window.fallbackVoteWorldcup('${post.id}', '${candidate.id}')"
+                    ${status.clickable ? '' : 'disabled'}
+                    aria-label="${escapeHtml(candidate.name)} 투표"
+                  >
+                    <div class="candidate-media">
+                      <span class="vote-badge">투표수 ${Number(candidate.votes || 0)}</span>
+                      ${candidate.image
+                        ? `<img src="${candidate.image}" alt="${escapeHtml(candidate.name)} 사진">`
+                        : `<div class="candidate-placeholder">후보 ${index + 1}</div>`}
+                    </div>
+                    <div class="candidate-body">
+                      <span class="candidate-name">${escapeHtml(candidate.name)}</span>
+                      <div class="candidate-caption">${status.clickable ? '사진 클릭 시 즉시 1표 증가' : '현재 클릭이 비활성화된 후보입니다.'}</div>
+                    </div>
+                  </button>
+                `).join('')}
+              </div>
+            </article>
+          `;
+        }).join('');
+      }
+
+      function clearSupabaseAuthStorage() {
+        const projectRef = new URL(SUPABASE_URL).hostname.split('.')[0];
+        const keys = [];
+        for (let i = 0; i < localStorage.length; i += 1) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith(`sb-${projectRef}-`)) keys.push(key);
+        }
+        for (let i = 0; i < sessionStorage.length; i += 1) {
+          const key = sessionStorage.key(i);
+          if (key && key.startsWith(`sb-${projectRef}-`)) keys.push(key);
+        }
+        keys.forEach((key) => {
+          localStorage.removeItem(key);
+          sessionStorage.removeItem(key);
+        });
+      }
+
+      window.fallbackGoogleLogin = function () {
+        const redirectTo = window.location.href.split('#')[0];
+        const url = new URL('/auth/v1/authorize', SUPABASE_URL);
+        url.searchParams.set('provider', 'google');
+        url.searchParams.set('redirect_to', redirectTo);
+        window.location.assign(url.toString());
+      };
+
+      window.fallbackLogout = function () {
+        clearSupabaseAuthStorage();
+        window.location.reload();
+      };
+
+      window.fallbackRefresh = function () {
+        window.location.reload();
+      };
+
+      window.fallbackVoteWorldcup = function (postId, candidateId) {
+        const posts = loadWorldcupPosts();
+        const post = posts.find((item) => item.id === postId);
+        if (!post) return;
+        const status = getWorldcupStatus(post);
+        if (!status.clickable) return;
+        const candidate = post.candidates.find((item) => item.id === candidateId);
+        if (!candidate) return;
+        candidate.votes = Number(candidate.votes || 0) + 1;
+        saveWorldcupPosts(posts);
+        renderFallbackWorldcup(true);
+      };
+
+      document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(renderFallbackWorldcup, 100);
+        setTimeout(renderFallbackWorldcup, 1200);
+      });
+    })();
+  </script>
   <script type="module" src="./main.js"></script>
 </body>
 </html>
