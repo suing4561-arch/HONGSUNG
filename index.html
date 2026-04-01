@@ -651,6 +651,10 @@
             <label for="contentInput">내용</label>
             <textarea id="contentInput" required placeholder="내용 입력"></textarea>
           </div>
+          <div class="field-box full">
+            <label for="postPasswordInput">비밀번호 (4자리 숫자)</label>
+            <input id="postPasswordInput" type="password" inputmode="numeric" maxlength="4" placeholder="수정/삭제용 4자리 숫자" />
+          </div>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn secondary" id="cancelBtn">취소</button>
@@ -694,6 +698,10 @@
           <div class="field-box full">
             <label for="worldcupResultInput">결과 요약 텍스트</label>
             <textarea id="worldcupResultInput" required placeholder="종료 후 보여줄 결과 요약 또는 진행 중 안내 문구 입력"></textarea>
+          </div>
+          <div class="field-box full">
+            <label for="worldcupPasswordInput">비밀번호 (4자리 숫자)</label>
+            <input id="worldcupPasswordInput" type="password" inputmode="numeric" maxlength="4" placeholder="수정/삭제용 4자리 숫자" />
           </div>
           <div class="field-box full">
             <label>후보 (최대 4개, 이름·사진·하단 글자 입력 가능)</label>
@@ -1024,10 +1032,14 @@
     const levelInput=document.getElementById('levelInput');
     const feeInput=document.getElementById('feeInput');
     const contentInput=document.getElementById('contentInput');
+    const postPasswordInput=document.getElementById('postPasswordInput');
+
+    const WORLDCUP_PASSWORD_KEY='futsal_worldcup_passwords_v1';
 
     let currentBoard='mercenary';
     let editingId=null;
     let posts=loadPosts();
+    let worldcupPasswords = loadWorldcupPasswords();
 
     function loadPosts() {
       try {
@@ -1035,6 +1047,57 @@
         if(!raw) return getDefaultPosts();
         return JSON.parse(raw);
       } catch(e) { return []; }
+    }
+
+    function loadWorldcupPasswords() {
+      try {
+        return JSON.parse(localStorage.getItem(WORLDCUP_PASSWORD_KEY)) || {};
+      } catch(e) {
+        return {};
+      }
+    }
+
+    function saveWorldcupPasswords() {
+      localStorage.setItem(WORLDCUP_PASSWORD_KEY, JSON.stringify(worldcupPasswords));
+    }
+
+    function isFourDigitPassword(value) {
+      return /^\d{4}$/.test(String(value || '').trim());
+    }
+
+    function getVerifiedPassword(storedPassword, subject) {
+      if (isAdmin()) return '__ADMIN__';
+      if (!storedPassword) {
+        alert(subject + ' 비밀번호가 설정되지 않아 관리자만 수정 또는 삭제할 수 있습니다.');
+        return null;
+      }
+      const entered = prompt(subject + ' 비밀번호 4자리를 입력해 주세요.','');
+      if (entered === null) return null;
+      if (String(entered).trim() !== String(storedPassword)) {
+        alert('비밀번호가 일치하지 않습니다.');
+        return null;
+      }
+      return String(entered).trim();
+    }
+
+    function getPostById(id) {
+      return posts.find(p => p.id === id) || null;
+    }
+
+    function getWorldcupPassword(postId) {
+      return worldcupPasswords[postId] || '';
+    }
+
+    function setWorldcupPassword(postId, password) {
+      if (!postId) return;
+      worldcupPasswords[postId] = password;
+      saveWorldcupPasswords();
+    }
+
+    function deleteWorldcupPassword(postId) {
+      if (!postId) return;
+      delete worldcupPasswords[postId];
+      saveWorldcupPasswords();
     }
 
     function getDefaultPosts() {
@@ -1092,6 +1155,7 @@
     function closeModal() {
       modalBackdrop.classList.remove('show'); editingId=null;
       modalTitle.textContent='글쓰기'; postForm.reset();
+      postPasswordInput.value='';
       urgentInput.value='false'; updateUrgentBox();
     }
 
@@ -1102,25 +1166,48 @@
 
     postForm.addEventListener('submit',(e)=>{
       e.preventDefault();
+      const password = postPasswordInput.value.trim();
       const payload={board:currentBoard,urgent:currentBoard==='mercenary'?urgentInput.value==='true':false,author:authorInput.value.trim(),title:titleInput.value.trim(),region:regionInput.value.trim(),time:timeInput.value.trim(),level:levelInput.value.trim(),fee:feeInput.value.trim(),content:contentInput.value.trim()};
       if(!payload.author||!payload.title||!payload.content) { alert('작성자, 제목, 내용은 필수입니다.'); return; }
-      if(editingId) { const idx=posts.findIndex(p=>p.id===editingId); if(idx>=0) posts[idx]={...posts[idx],...payload}; }
-      else { posts.push({id:crypto.randomUUID(),...payload,createdAt:new Date().toISOString(),comments:[]}); }
+      if(editingId) {
+        const idx=posts.findIndex(p=>p.id===editingId);
+        if(idx>=0) {
+          const currentPost = posts[idx];
+          if(!isAdmin()) {
+            if(!isFourDigitPassword(password)) { alert('비밀번호는 4자리 숫자로 입력해 주세요.'); return; }
+            if(String(currentPost.password || '') !== password) { alert('수정 시 기존 4자리 비밀번호를 동일하게 입력해 주세요.'); return; }
+            posts[idx]={...currentPost,...payload,password};
+          } else {
+            const nextPassword = isFourDigitPassword(password) ? password : currentPost.password;
+            posts[idx]={...currentPost,...payload,password:nextPassword};
+          }
+        }
+      }
+      else {
+        if(!isFourDigitPassword(password)) { alert('비밀번호는 4자리 숫자로 입력해 주세요.'); return; }
+        posts.push({id:crypto.randomUUID(),...payload,password,createdAt:new Date().toISOString(),comments:[]});
+      }
       savePosts(); renderPosts(); closeModal();
     });
 
     window.openEdit=function(id) {
       const post=posts.find(p=>p.id===id); if(!post) return;
+      const verifiedPassword = getVerifiedPassword(post.password, '이 글');
+      if (!verifiedPassword) return;
       editingId=id; currentBoard=post.board; renderPosts();
       modalTitle.textContent='글 수정';
       authorInput.value=post.author||''; titleInput.value=post.title||'';
       regionInput.value=post.region||''; timeInput.value=post.time||'';
       levelInput.value=post.level||''; feeInput.value=post.fee||'';
       contentInput.value=post.content||''; urgentInput.value=post.urgent?'true':'false';
+      postPasswordInput.value = verifiedPassword === '__ADMIN__' ? '' : verifiedPassword;
       openModal();
     };
 
     window.deletePost=function(id) {
+      const post = getPostById(id); if(!post) return;
+      const verifiedPassword = getVerifiedPassword(post.password, '이 글');
+      if (!verifiedPassword) return;
       if(!confirm('이 글을 삭제할까요?')) return;
       posts=posts.filter(p=>p.id!==id); savePosts(); renderPosts();
     };
@@ -1174,6 +1261,7 @@
     const worldcupCandidateImageInputs=Array.from(document.querySelectorAll('.candidate-image-input'));
     const worldcupCandidateCaptionInputs=Array.from(document.querySelectorAll('.candidate-caption-input'));
     const worldcupCandidateVoteInputs=Array.from(document.querySelectorAll('.candidate-vote-input'));
+    const worldcupPasswordInput=document.getElementById('worldcupPasswordInput');
     const worldcupDateInputs=[worldcupCreatedAtInput,worldcupStartInput,worldcupEndInput];
 
     let worldcupPosts = [];
@@ -1202,11 +1290,12 @@
         end_at: postData.endAt,
         candidates: postData.candidates
       };
-      await sbFetch('worldcup_posts', {
+      const inserted = await sbFetch('worldcup_posts?select=id', {
         method: 'POST',
-        prefer: 'return=minimal',
+        prefer: 'return=representation',
         body: row
       });
+      return Array.isArray(inserted) ? inserted[0] : inserted;
     }
 
     async function wcUpdatePost(id, postData) {
@@ -1332,7 +1421,7 @@
             </div>
             <div class="worldcup-admin-bar">
               <button class="small-btn blue" onclick="editWorldcupPost('${post.id}')">수정</button>
-              ${admin?`<button class="small-btn red" onclick="deleteWorldcupPost('${post.id}')">투표글 삭제</button>`:''}
+              <button class="small-btn red" onclick="deleteWorldcupPost('${post.id}')">투표글 삭제</button>
             </div>
             <!-- 댓글 영역 -->
             <div class="wc-comments" id="wc-comments-${post.id}">
@@ -1412,10 +1501,12 @@
 
     /* --- 삭제 --- */
     window.deleteWorldcupPost = async function(postId) {
-      if (!isAdmin()) { alert('관리자만 삭제할 수 있습니다.'); return; }
+      const verifiedPassword = getVerifiedPassword(getWorldcupPassword(postId), '이 투표글');
+      if (!verifiedPassword) return;
       if (!confirm('이 투표글을 삭제할까요?')) return;
       try {
         await wcDeletePost(postId);
+        deleteWorldcupPassword(postId);
         await wcLoadPosts();
       } catch(e) {
         alert('삭제 실패: ' + e.message);
@@ -1427,6 +1518,8 @@
 
     window.editWorldcupPost = function(postId) {
       const raw = worldcupPosts.find(p=>p.id===postId); if(!raw) return;
+      const verifiedPassword = getVerifiedPassword(getWorldcupPassword(postId), '이 투표글');
+      if (!verifiedPassword) return;
       const post = dbPost(raw);
       worldcupEditingId = postId;
       worldcupForm.reset();
@@ -1435,6 +1528,7 @@
       worldcupTitleInput.value = post.title || '';
       worldcupDescriptionInput.value = post.description || '';
       worldcupResultInput.value = post.resultSummary || '';
+      worldcupPasswordInput.value = verifiedPassword === '__ADMIN__' ? '' : verifiedPassword;
       if(post.createdAt) worldcupCreatedAtInput.value = toLocalDateTimeValue(new Date(post.createdAt));
       if(post.startAt) worldcupStartInput.value = toLocalDateTimeValue(new Date(post.startAt));
       if(post.endAt) worldcupEndInput.value = toLocalDateTimeValue(new Date(post.endAt));
@@ -1457,14 +1551,15 @@
     worldcupWriteBtn.addEventListener('click',()=>{
       worldcupEditingId = null;
       worldcupForm.reset();
+      worldcupPasswordInput.value = '';
       document.getElementById('worldcupModalTitle').textContent = '원픽월드컵 글쓰기';
       document.getElementById('worldcupSubmitBtn').textContent = '글 올리기';
       fillWorldcupDateDefaults();
       worldcupModalBackdrop.classList.add('show');
     });
 
-    worldcupCancelBtn.addEventListener('click',()=>{ worldcupModalBackdrop.classList.remove('show'); worldcupForm.reset(); worldcupEditingId=null; });
-    worldcupModalBackdrop.addEventListener('click',(e)=>{ if(e.target===worldcupModalBackdrop){ worldcupModalBackdrop.classList.remove('show'); worldcupForm.reset(); worldcupEditingId=null; } });
+    worldcupCancelBtn.addEventListener('click',()=>{ worldcupModalBackdrop.classList.remove('show'); worldcupForm.reset(); worldcupPasswordInput.value=''; worldcupEditingId=null; });
+    worldcupModalBackdrop.addEventListener('click',(e)=>{ if(e.target===worldcupModalBackdrop){ worldcupModalBackdrop.classList.remove('show'); worldcupForm.reset(); worldcupPasswordInput.value=''; worldcupEditingId=null; } });
 
     worldcupDateInputs.forEach((input,index)=>{
       input.addEventListener('dblclick',()=>{
@@ -1486,12 +1581,21 @@
     /* --- 글쓰기/수정 제출 --- */
     worldcupForm.addEventListener('submit', async(e)=>{
       e.preventDefault();
+      const password = worldcupPasswordInput.value.trim();
       const createdAt=fromDateTimeLocal(worldcupCreatedAtInput.value);
       const startAt=fromDateTimeLocal(worldcupStartInput.value);
       const endAt=fromDateTimeLocal(worldcupEndInput.value);
       if(!createdAt||!startAt||!endAt){alert('작성일, 시작일, 종료일을 모두 입력해 주세요.');return;}
       if(new Date(startAt)>new Date(endAt)){alert('투표 시작일은 종료일보다 늦을 수 없습니다.');return;}
       if(!worldcupTitleInput.value.trim()||!worldcupDescriptionInput.value.trim()||!worldcupResultInput.value.trim()){alert('제목, 설명, 결과 요약 텍스트를 모두 입력해 주세요.');return;}
+      if(worldcupEditingId){
+        if(!isAdmin()) {
+          if(!isFourDigitPassword(password)) { alert('비밀번호는 4자리 숫자로 입력해 주세요.'); return; }
+          if(password !== getWorldcupPassword(worldcupEditingId)) { alert('수정 시 기존 4자리 비밀번호를 동일하게 입력해 주세요.'); return; }
+        }
+      } else if(!isFourDigitPassword(password)) {
+        alert('비밀번호는 4자리 숫자로 입력해 주세요.'); return;
+      }
 
       const candidates = await Promise.all(worldcupCandidateNameInputs.map(async(input,i)=>{
         const imgFile=worldcupCandidateImageInputs[i].files[0];
@@ -1524,11 +1628,14 @@
         };
         if(worldcupEditingId){
           await wcUpdatePost(worldcupEditingId, postData);
+          if (isAdmin() && isFourDigitPassword(password)) setWorldcupPassword(worldcupEditingId, password);
         } else {
-          await wcInsertPost(postData);
+          const inserted = await wcInsertPost(postData);
+          setWorldcupPassword(inserted?.id, password);
         }
         worldcupModalBackdrop.classList.remove('show');
         worldcupForm.reset();
+        worldcupPasswordInput.value = '';
         worldcupEditingId = null;
         await wcLoadPosts();
         // 모든 댓글 미리 로드
