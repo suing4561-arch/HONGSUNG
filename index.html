@@ -285,6 +285,10 @@
     .filter-help{font-size:13px;color:#64748b;line-height:1.6}
     .filter-actions{display:flex;gap:10px;flex-wrap:wrap}
     .filter-summary{padding:14px;border-radius:16px;background:#f8fafc;border:1px solid #e5e7eb;font-size:13px;line-height:1.7;color:#475569}
+    .date-range-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+    .date-range-btn{border:1px solid #cbd5e1;border-radius:10px;padding:7px 12px;font-size:13px;font-weight:800;cursor:pointer;background:#fff;color:#374151;transition:background .15s,color .15s,border-color .15s}
+    .date-range-btn:hover{background:#e5e7eb}
+    .date-range-btn.on{background:#0f172a;color:#fff;border-color:#0f172a}
     .result-panel{display:grid;gap:14px}
     .result-toolbar{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
     .result-toolbar p{margin:0;font-size:14px;line-height:1.7;color:#64748b}
@@ -538,8 +542,13 @@
             <div class="filter-stack">
               <div class="filter-grid">
                 <div class="filter-field">
-                  <label for="filterDateInput">날짜</label>
+                  <label for="filterDateInput">날짜 (직접 선택)</label>
                   <input type="date" id="filterDateInput" />
+                  <div class="date-range-btns">
+                    <button type="button" class="date-range-btn" data-range="3">3일 이내</button>
+                    <button type="button" class="date-range-btn" data-range="7">1주일 이내</button>
+                    <button type="button" class="date-range-btn" data-range="30">한 달 이내</button>
+                  </div>
                 </div>
                 <div class="filter-field">
                   <label for="filterStatusInput">상태</label>
@@ -579,7 +588,7 @@
                 <button class="small-btn gray" id="closeFilterBtn">닫기</button>
               </div>
               <div class="filter-summary" id="filterSummary">조건을 선택하면 해당하는 경기만 카드로 정리됩니다.</div>
-              <div class="filter-help">매칭 필터 버튼으로 조건을 열고, 글쓰기는 상단 툴바에서 바로 이동할 수 있습니다.</div>
+              <div class="filter-help">날짜 범위 버튼은 오늘부터 해당 기간의 경기를 모두 보여줍니다.</div>
             </div>
           </div>
         </div>
@@ -1309,7 +1318,7 @@
     let worldcupPasswords = loadWorldcupPasswords();
     let postOwners = loadPostOwners();
     let selectedProvince = '';
-    const filters={date:'',level:'all',fee:'all',status:'all',province:'',district:''};
+    const filters={date:'',dateRange:null,level:'all',fee:'all',status:'all',province:'',district:''};
 
     function todayOffset(offset) {
       const date=new Date();
@@ -1543,6 +1552,13 @@
       return !!post.matchDate && post.matchDate === todayOffset(0);
     }
 
+    function isWithinDateRange(post, days) {
+      if (!post.matchDate) return false;
+      const start = todayOffset(0);
+      const end = todayOffset(days);
+      return post.matchDate >= start && post.matchDate <= end;
+    }
+
     function feeBucket(fee) {
       const value=String(fee||'').trim();
       if (!value) return 'other';
@@ -1611,6 +1627,7 @@
         if (post.board !== currentBoard) return false;
         if (!matchesActiveRegion(post)) return false;
         if (filters.date && post.matchDate !== filters.date) return false;
+        if (filters.dateRange && !isWithinDateRange(post, filters.dateRange)) return false;
         if (filters.level !== 'all' && post.level !== filters.level) return false;
         if (filters.fee !== 'all' && feeBucket(post.fee) !== filters.fee) return false;
         if (filters.status !== 'all' && getPostStatus(post).key !== filters.status) return false;
@@ -1635,6 +1652,7 @@
       const conditions = [
         filters.province ? `지역 ${getActiveRegionLabel()}` : null,
         filters.date ? `날짜 ${formatDateOnly(filters.date)}` : null,
+        filters.dateRange ? `날짜 ${filters.dateRange}일 이내` : null,
         filters.level !== 'all' ? `레벨 ${filters.level}` : null,
         filters.fee !== 'all' ? `참가비 ${filterFeeInput.options[filterFeeInput.selectedIndex].text}` : null,
         filters.status !== 'all' ? `상태 ${filterStatusInput.options[filterStatusInput.selectedIndex].text}` : null
@@ -1851,6 +1869,7 @@
     function resetFilters() {
       setRegionFilter('', '');
       filters.date='';
+      filters.dateRange=null;
       filters.level='all';
       filters.fee='all';
       filters.status='all';
@@ -1858,6 +1877,7 @@
       filterLevelInput.value='all';
       filterFeeInput.value='all';
       filterStatusInput.value='all';
+      document.querySelectorAll('.date-range-btn').forEach(btn => btn.classList.remove('on'));
       renderMatchBoard();
     }
 
@@ -1884,7 +1904,28 @@
     regionModalBackdrop.addEventListener('click',(e)=>{ if(e.target===regionModalBackdrop) closeRegionModal(); });
     filterModalBackdrop.addEventListener('click',(e)=>{ if(e.target===filterModalBackdrop) closeFilterModal(); });
     boardButtons.forEach(btn=>btn.addEventListener('click',()=>{ currentBoard=btn.dataset.board; setRegionFilter('', ''); closeFilterModal(); renderMatchBoard(); }));
-    filterDateInput.addEventListener('input', (e)=>{ filters.date=e.target.value; renderPosts(); });
+    document.querySelectorAll('.date-range-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const range = Number(btn.dataset.range);
+        if (filters.dateRange === range) {
+          filters.dateRange = null;
+          btn.classList.remove('on');
+        } else {
+          filters.dateRange = range;
+          filters.date = '';
+          filterDateInput.value = '';
+          document.querySelectorAll('.date-range-btn').forEach(item => item.classList.remove('on'));
+          btn.classList.add('on');
+        }
+        renderPosts();
+      });
+    });
+    filterDateInput.addEventListener('input', (e)=>{
+      filters.date=e.target.value;
+      filters.dateRange=null;
+      document.querySelectorAll('.date-range-btn').forEach(btn => btn.classList.remove('on'));
+      renderPosts();
+    });
     filterLevelInput.addEventListener('change', (e)=>{ filters.level=e.target.value; renderPosts(); });
     filterFeeInput.addEventListener('change', (e)=>{ filters.fee=e.target.value; renderPosts(); });
     filterStatusInput.addEventListener('change', (e)=>{ filters.status=e.target.value; renderPosts(); });
