@@ -28,6 +28,7 @@
     .site-header{background:#ffffffdd;backdrop-filter:blur(10px);border-bottom:1px solid #e5e7eb}
     .top-brand{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;padding:14px 0 12px}
     .brand-stack{display:flex;flex-direction:column;gap:4px}
+    .brand-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
     .brand-3d{font-size:52px;font-weight:1000;letter-spacing:-1px;line-height:1;color:#0f172a;text-shadow:0 2px 0 rgba(255,255,255,.55)}
     .brand-3d .accent{color:#16a34a}
     .brand-sub{font-size:18px;font-weight:800;color:#334155;margin-left:4px}
@@ -358,13 +359,15 @@
   <header class="site-header">
     <div class="container top-brand">
       <div class="brand-stack">
-        <div class="brand-3d">풋살<span class="accent">링크</span></div>
+        <div class="brand-row">
+          <div class="brand-3d">풋살<span class="accent">링크</span></div>
+          <button class="small-btn blue" id="loginBtn" style="display:none;">관리자</button>
+        </div>
         <div class="brand-sub">축구/풋살 전술판 & 매칭</div>
       </div>
       <div class="header-right">
         <div class="admin-bar" id="adminBar">
           <span class="admin-badge" id="adminBadge" style="display:none;"></span>
-          <button class="small-btn blue" id="loginBtn" style="display:none;">관리자 로그인</button>
           <button class="small-btn gray" id="logoutBtn" style="display:none;">로그아웃</button>
           <button class="small-btn gray" id="refreshBtn">새로고침</button>
         </div>
