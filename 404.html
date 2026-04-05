@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>풋살링크 | 리디렉션</title>
+  <script>
+    // GitHub Pages path → hash 변환
+    // /match → index.html#match
+    // /pic/글ID → index.html#pic/글ID
+    var seg = location.pathname.replace(/^\/[^/]*/, '').replace(/^\//, '');
+    var hash = seg || '';
+    var base = location.origin + location.pathname.split('/').slice(0,2).join('/') + '/';
+    location.replace(base + (hash ? '#' + hash : ''));
+  </script>
+</head>
+<body></body>
+</html>
