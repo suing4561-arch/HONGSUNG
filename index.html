@@ -474,8 +474,16 @@
     .worldcup-grid.teams-3{grid-template-columns:repeat(3,1fr)}
     .worldcup-grid.teams-4{grid-template-columns:repeat(4,1fr)}
     .candidate-card{position:relative;border:none;border-radius:18px;overflow:hidden;background:#0f172a;color:#fff;cursor:pointer;text-align:left;padding:0;transition:transform .18s,box-shadow .18s;box-shadow:0 10px 24px rgba(15,23,42,.14)}
-    .candidate-card:hover:not(:disabled){transform:translateY(-3px);box-shadow:0 16px 32px rgba(15,23,42,.2)}
-    .candidate-card:disabled{cursor:not-allowed;opacity:.78}
+    .candidate-card:hover:not(.disabled-card){transform:translateY(-3px);box-shadow:0 16px 32px rgba(15,23,42,.2)}
+    .candidate-card.disabled-card{cursor:not-allowed;opacity:.78;pointer-events:none}
+    .cco{display:none;position:absolute;inset:0;background:rgba(0,0,0,.78);border-radius:18px;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px;z-index:10}
+    .cco.show{display:flex}
+    .cco-btn{padding:10px 20px;border-radius:999px;font-size:14px;font-weight:900;border:none;cursor:pointer;width:100%;max-width:200px;transition:opacity .15s}
+    .cco-btn.ok{background:#22c55e;color:#fff}
+    .cco-btn.ok:hover{opacity:.85}
+    .cco-btn.reset{background:#f1f5f9;color:#1e293b}
+    .cco-btn.reset:hover{background:#e2e8f0}
+    .candidate-card.voted{box-shadow:0 0 0 3px #22c55e,0 10px 24px rgba(15,23,42,.14)}
     .candidate-media{position:relative;aspect-ratio:2/1;min-height:80px;padding:6px;background:linear-gradient(135deg,#e2e8f0,#cbd5e1);display:flex;align-items:center;justify-content:center}
     .candidate-media img{width:100%;height:100%;object-fit:contain;display:block;border-radius:12px;background:#fff}
     .candidate-placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1e293b,#334155)}
@@ -1355,7 +1363,7 @@ function applyAdminUI(){
       loginBtn.style.display='inline-flex';
     }
   }
-  worldcupWriteBtn.style.display='inline-flex';
+  worldcupWriteBtn.style.display=(s||user)?'inline-flex':'none';
   if(typeof renderMatchBoard==='function')renderMatchBoard();
   renderReports();
   updateSlimActions();
@@ -1399,11 +1407,16 @@ window.openLoginModal=function(editing){
   document.getElementById('nicknameInput').value=editing&&user?user.nickname||'':'';
   loginEmail.value=editing&&user?user.email||'':'';
   loginPassword.value='';
-  passwordField.style.display='none';
   loginError.style.display='none';
   loginError.textContent='';
   document.getElementById('loginModalTitle').textContent=editing?'👤 정보 수정':'👤 로그인 / 닉네임 등록';
-  document.getElementById('loginModalDesc').textContent='닉네임과 이메일을 입력하세요. 관리자 이메일이면 비밀번호 칸이 자동으로 나타납니다.';
+  if(loginEmail.value&&isAdminEmail(loginEmail.value)){
+    passwordField.style.display='flex';
+    document.getElementById('loginModalDesc').textContent='관리자 이메일이 확인되었습니다. 비밀번호를 입력하세요.';
+  } else {
+    passwordField.style.display='none';
+    document.getElementById('loginModalDesc').textContent='닉네임과 이메일을 입력하세요. 관리자 이메일이면 비밀번호 칸이 자동으로 나타납니다.';
+  }
   loginModalBackdrop.classList.add('show');
   setTimeout(()=>document.getElementById('nicknameInput').focus(),100);
 };
@@ -2037,7 +2050,7 @@ function renderWorldcupPosts(){
   document.getElementById('worldcupList').innerHTML=page.map(post=>{
     const st=getWcStatus(post),coms=wcCommentsCache[post.id]||[];
     const valid=post.candidates.filter(c=>c.name);const tc=Math.min(4,Math.max(2,valid.length));
-    return`<article class="worldcup-card" id="wc-post-${post.id}"><div class="worldcup-top"><div><h3>${escapeHtml(post.title)}</h3><p class="worldcup-desc">${escapeHtml(post.description).replace(/\n/g,'<br>')}</p></div><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;"><span class="worldcup-status ${st.key}">${st.label}</span><button class="small-btn gray" style="font-size:11px;padding:5px 10px;" onclick="shareWorldcupPost('${post.id}')">🔗 공유</button></div></div><div class="worldcup-info"><div class="worldcup-info-item"><strong>작성일</strong><span>${formatDate(post.createdAt)}</span></div><div class="worldcup-info-item"><strong>시작</strong><span>${formatDate(post.startAt)}</span></div><div class="worldcup-info-item"><strong>종료</strong><span>${formatDate(post.endAt)}</span></div><div class="worldcup-info-item"><strong>상태</strong><span>${st.label}</span></div></div><p class="worldcup-result">${escapeHtml(post.resultSummary||'').replace(/\n/g,'<br>')}</p><div class="worldcup-grid teams-${tc}">${valid.map(c=>`<button type="button" class="candidate-card" onclick="voteWorldcup('${post.id}','${c.id}')" ${st.clickable?'':'disabled'}><div class="candidate-media"><span class="vote-badge">투표수 ${Number(c.votes||0)}</span>${c.image?`<img src="${c.image}" alt="${escapeHtml(c.name)}">`:`<div class="candidate-placeholder"><span class="candidate-placeholder-text">${escapeHtml(c.name)}</span></div>`}</div><div class="candidate-body"><span class="candidate-name">${escapeHtml(c.name)}</span>${c.caption?`<div class="candidate-caption" style="color:#e2e8f0;font-weight:700;">${escapeHtml(c.caption)}</div>`:''}<div class="candidate-caption">${st.clickable?'클릭 시 1표 증가':'비활성화'}</div></div></button>`).join('')}</div>${admin?`<div class="worldcup-admin-bar"><button class="small-btn blue" onclick="editWorldcupPost('${post.id}')">글수정</button><button class="small-btn red" onclick="deleteWorldcupPost('${post.id}')">글삭제</button><button class="small-btn" style="background:#f59e0b;" onclick="resetVotes('${post.id}')">투표초기화</button></div>`:''}<div class="wc-comments" id="wc-comments-${post.id}"><div class="wc-comments-title">💬 댓글 ${coms.length}개</div>${coms.map(cm=>`<div class="wc-comment"><div class="wc-comment-main"><span class="wc-comment-author">${escapeHtml(cm.author_name)}</span><span class="wc-comment-date">${formatDate(cm.created_at)}</span><div style="margin-top:4px;">${escapeHtml(cm.content)}</div></div>${admin?`<button class="wc-comment-del" onclick="deleteWcComment('${cm.id}','${post.id}')">삭제</button>`:''}</div>`).join('')}<div class="wc-comment-form"><input class="wc-comment-name" id="wc-cname-${post.id}" placeholder="닉네임" maxlength="20" value="${escapeHtml(getSavedNickname())}" /><input class="wc-comment-text" id="wc-ctext-${post.id}" placeholder="댓글 입력 (로그인 필요)" maxlength="200" /><button class="wc-comment-btn" onclick="submitWcComment('${post.id}')">등록</button></div></div></article>`;
+    return`<article class="worldcup-card" id="wc-post-${post.id}"><div class="worldcup-top"><div><h3>${escapeHtml(post.title)}</h3><p class="worldcup-desc">${escapeHtml(post.description).replace(/\n/g,'<br>')}</p></div><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;"><span class="worldcup-status ${st.key}">${st.label}</span><button class="small-btn gray" style="font-size:11px;padding:5px 10px;" onclick="shareWorldcupPost('${post.id}')">🔗 공유</button></div></div><div class="worldcup-info"><div class="worldcup-info-item"><strong>작성일</strong><span>${formatDate(post.createdAt)}</span></div><div class="worldcup-info-item"><strong>시작</strong><span>${formatDate(post.startAt)}</span></div><div class="worldcup-info-item"><strong>종료</strong><span>${formatDate(post.endAt)}</span></div><div class="worldcup-info-item"><strong>상태</strong><span>${st.label}</span></div></div><p class="worldcup-result">${escapeHtml(post.resultSummary||'').replace(/\n/g,'<br>')}</p><div class="worldcup-grid teams-${tc}">${valid.map(c=>`<div class="candidate-card${st.clickable?'':' disabled-card'}${getMyVote(post.id)===c.id?' voted':''}" ${st.clickable?`onclick="selectCandidate('${post.id}','${c.id}',this)"`:''}><div class="candidate-media"><span class="vote-badge">투표수 ${Number(c.votes||0)}</span>${c.image?`<img src="${c.image}" alt="${escapeHtml(c.name)}">`:`<div class="candidate-placeholder"><span class="candidate-placeholder-text">${escapeHtml(c.name)}</span></div>`}</div><div class="candidate-body"><span class="candidate-name">${escapeHtml(c.name)}</span>${c.caption?`<div class="candidate-caption" style="color:#e2e8f0;font-weight:700;">${escapeHtml(c.caption)}</div>`:''}<div class="candidate-caption">${st.clickable?'클릭하여 투표':'비활성화'}</div></div>${st.clickable?`<div class="cco" id="cco-${c.id}"><button class="cco-btn ok" onclick="confirmVote('${post.id}','${c.id}');event.stopPropagation()">확인</button><button class="cco-btn reset" onclick="cancelVote('${post.id}','${c.id}');event.stopPropagation()">다시투표하기</button></div>`:''}</div>`).join('')}</div>${admin?`<div class="worldcup-admin-bar"><button class="small-btn blue" onclick="editWorldcupPost('${post.id}')">글수정</button><button class="small-btn red" onclick="deleteWorldcupPost('${post.id}')">글삭제</button><button class="small-btn" style="background:#f59e0b;" onclick="resetVotes('${post.id}')">투표초기화</button></div>`:''}<div class="wc-comments" id="wc-comments-${post.id}"><div class="wc-comments-title">💬 댓글 ${coms.length}개</div>${coms.map(cm=>`<div class="wc-comment"><div class="wc-comment-main"><span class="wc-comment-author">${escapeHtml(cm.author_name)}</span><span class="wc-comment-date">${formatDate(cm.created_at)}</span><div style="margin-top:4px;">${escapeHtml(cm.content)}</div></div>${admin?`<button class="wc-comment-del" onclick="deleteWcComment('${cm.id}','${post.id}')">삭제</button>`:''}</div>`).join('')}<div class="wc-comment-form"><input class="wc-comment-name" id="wc-cname-${post.id}" placeholder="닉네임" maxlength="20" value="${escapeHtml(getSavedNickname())}" /><input class="wc-comment-text" id="wc-ctext-${post.id}" placeholder="댓글 입력 (로그인 필요)" maxlength="200" /><button class="wc-comment-btn" onclick="submitWcComment('${post.id}')">등록</button></div></div></article>`;
   }).join('');
   renderWcPagination(total);
 }
@@ -2052,15 +2065,50 @@ window.submitWcComment=async function(pid){
   });
 };
 window.deleteWcComment=async function(cid,pid){if(!isAdmin()){alert('관리자만 삭제 가능');return;}if(!confirm('댓글 삭제?'))return;try{await wcDeleteComment(cid);await wcLoadComments(pid);renderWorldcupPosts();}catch(e){alert('실패: '+e.message);}};
-window.voteWorldcup=async function(pid,cid){
-  requireLogin(async()=>{
-    const raw=worldcupPosts.find(p=>p.id===pid);if(!raw)return;
-    const p=dbPost(raw);const st=getWcStatus(p);if(!st.clickable)return;
-    const c=p.candidates.find(x=>x.id===cid);if(!c)return;
-    c.votes=Number(c.votes||0)+1;raw.candidates=p.candidates;renderWorldcupPosts();
-    try{await wcUpdateVotes(pid,p.candidates);}catch(e){console.error(e.message);}
+const WC_VOTES_KEY='wc_my_votes_v1';
+function getMyVotes(){try{return JSON.parse(localStorage.getItem(WC_VOTES_KEY))||{};}catch{return {};}}
+function getMyVote(pid){return getMyVotes()[pid]||null;}
+function setMyVote(pid,cid){const v=getMyVotes();v[pid]=cid;localStorage.setItem(WC_VOTES_KEY,JSON.stringify(v));}
+function clearMyVote(pid){const v=getMyVotes();delete v[pid];localStorage.setItem(WC_VOTES_KEY,JSON.stringify(v));}
+
+window.selectCandidate=function(pid,cid,card){
+  requireLogin(()=>{
+    document.querySelectorAll('.cco').forEach(el=>el.classList.remove('show'));
+    const overlay=document.getElementById('cco-'+cid);
+    if(overlay)overlay.classList.add('show');
   });
 };
+window.confirmVote=async function(pid,cid){
+  document.getElementById('cco-'+cid)?.classList.remove('show');
+  const myVote=getMyVote(pid);
+  if(myVote===cid){return;} // already voted for this one
+  const raw=worldcupPosts.find(p=>p.id===pid);if(!raw)return;
+  const p=dbPost(raw);const st=getWcStatus(p);if(!st.clickable)return;
+  // undo previous vote if switching
+  if(myVote){
+    const prev=p.candidates.find(x=>x.id===myVote);
+    if(prev)prev.votes=Math.max(0,Number(prev.votes||0)-1);
+  }
+  const c=p.candidates.find(x=>x.id===cid);if(!c)return;
+  c.votes=Number(c.votes||0)+1;raw.candidates=p.candidates;
+  setMyVote(pid,cid);
+  renderWorldcupPosts();
+  try{await wcUpdateVotes(pid,p.candidates);}catch(e){console.error(e.message);}
+};
+window.cancelVote=async function(pid,cid){
+  document.getElementById('cco-'+cid)?.classList.remove('show');
+  const myVote=getMyVote(pid);
+  if(!myVote){return;} // nothing to reset
+  const raw=worldcupPosts.find(p=>p.id===pid);if(!raw)return;
+  const p=dbPost(raw);
+  const c=p.candidates.find(x=>x.id===myVote);
+  if(!c)return;
+  c.votes=Math.max(0,Number(c.votes||0)-1);raw.candidates=p.candidates;
+  clearMyVote(pid);
+  renderWorldcupPosts();
+  try{await wcUpdateVotes(pid,p.candidates);}catch(e){console.error(e.message);}
+};
+window.voteWorldcup=function(){}; // legacy no-op
 window.resetVotes=async function(pid){
   if(!isAdmin()){alert('관리자만 가능합니다.');return;}
   if(!confirm('투표 수를 모두 0으로 초기화할까요?'))return;
@@ -2077,7 +2125,7 @@ let worldcupEditingId=null;
 window.editWorldcupPost=function(pid){if(!isAdmin()){alert('관리자만 수정 가능');return;}const raw=worldcupPosts.find(p=>p.id===pid);if(!raw)return;const post=dbPost(raw);worldcupEditingId=pid;document.getElementById('worldcupForm').reset();document.getElementById('worldcupModalTitle').textContent='원픽월드컵 수정';document.getElementById('worldcupSubmitBtn').textContent='수정 저장';document.getElementById('worldcupTitleInput').value=post.title||'';document.getElementById('worldcupDescriptionInput').value=post.description||'';document.getElementById('worldcupResultInput').value=post.resultSummary||'';document.getElementById('worldcupPasswordInput').value='';if(post.createdAt)document.getElementById('worldcupCreatedAtInput').value=toLDTV(new Date(post.createdAt));if(post.startAt)document.getElementById('worldcupStartInput').value=toLDTV(new Date(post.startAt));if(post.endAt)document.getElementById('worldcupEndInput').value=toLDTV(new Date(post.endAt));const cnt=Math.min(4,Math.max(2,post.candidates.filter(c=>c.name).length));document.getElementById('worldcupTeamCountInput').value=cnt;buildCandidateFields(cnt);setTimeout(()=>{const ni=document.getElementById('candidateFormGrid').querySelectorAll('.candidate-name-input');const ci=document.getElementById('candidateFormGrid').querySelectorAll('.candidate-caption-input');const vi=document.getElementById('candidateFormGrid').querySelectorAll('.candidate-vote-input');post.candidates.forEach((c,i)=>{if(ni[i])ni[i].value=c.name||'';if(ci[i])ci[i].value=c.caption||'';if(vi[i])vi[i].value=c.votes||0;});},10);document.getElementById('worldcupModalBackdrop').classList.add('show');};
 
 function fillWcDateDefaults(){const now=new Date(),nw=new Date(now.getTime()+86400000*7);document.getElementById('worldcupCreatedAtInput').value=toLDTV(now);document.getElementById('worldcupStartInput').value=toLDTV(now);document.getElementById('worldcupEndInput').value=toLDTV(nw);}
-worldcupWriteBtn.addEventListener('click',()=>{if(!isAdmin()){alert('원픽월드컵은 관리자만 등록할 수 있습니다.');return;}worldcupEditingId=null;document.getElementById('worldcupForm').reset();document.getElementById('worldcupPasswordInput').value='';document.getElementById('worldcupModalTitle').textContent='원픽월드컵 글쓰기';document.getElementById('worldcupSubmitBtn').textContent='글 올리기';document.getElementById('worldcupTeamCountInput').value='4';buildCandidateFields(4);fillWcDateDefaults();document.getElementById('worldcupModalBackdrop').classList.add('show');});
+worldcupWriteBtn.addEventListener('click',()=>{if(!getUserInfo()&&!getAdminSession()){requireLogin(()=>{});return;}worldcupEditingId=null;document.getElementById('worldcupForm').reset();document.getElementById('worldcupPasswordInput').value='';document.getElementById('worldcupModalTitle').textContent='원픽월드컵 글쓰기';document.getElementById('worldcupSubmitBtn').textContent='글 올리기';document.getElementById('worldcupTeamCountInput').value='4';buildCandidateFields(4);fillWcDateDefaults();document.getElementById('worldcupModalBackdrop').classList.add('show');});
 document.getElementById('worldcupCancelBtn').addEventListener('click',()=>{document.getElementById('worldcupModalBackdrop').classList.remove('show');document.getElementById('worldcupForm').reset();worldcupEditingId=null;});
 document.getElementById('worldcupModalBackdrop').addEventListener('click',e=>{if(e.target===document.getElementById('worldcupModalBackdrop')){document.getElementById('worldcupModalBackdrop').classList.remove('show');document.getElementById('worldcupForm').reset();worldcupEditingId=null;}});
 
@@ -2085,7 +2133,7 @@ async function fileToDataUrl(f){return new Promise((res,rej)=>{const r=new FileR
 
 document.getElementById('worldcupForm').addEventListener('submit',async e=>{
   e.preventDefault();
-  if(!isAdmin()){alert('관리자만 가능합니다.');return;}
+  if(!getUserInfo()&&!getAdminSession()){alert('로그인이 필요합니다.');return;}
   const cAt=fromDTL(document.getElementById('worldcupCreatedAtInput').value);
   const sAt=fromDTL(document.getElementById('worldcupStartInput').value);
   const eAt=fromDTL(document.getElementById('worldcupEndInput').value);
